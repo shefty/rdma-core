@@ -74,6 +74,7 @@ enum ibv_gid_type {
 	IBV_GID_TYPE_IB,
 	IBV_GID_TYPE_ROCE_V1,
 	IBV_GID_TYPE_ROCE_V2,
+	IBV_GID_TYPE_IP = IBV_GID_TYPE_ROCE_V2, /* RoCEv2 is just IP */
 };
 
 struct ibv_gid_entry {
@@ -94,13 +95,14 @@ struct ibv_gid_entry {
 
 enum ibv_node_type {
 	IBV_NODE_UNKNOWN	= -1,
-	IBV_NODE_CA 		= 1,
+	IBV_NODE_CA 		= 1, /* includes dual RDMA/UET NICs */
 	IBV_NODE_SWITCH,
 	IBV_NODE_ROUTER,
 	IBV_NODE_RNIC,
 	IBV_NODE_USNIC,
 	IBV_NODE_USNIC_UDP,
 	IBV_NODE_UNSPECIFIED,
+	IBV_NODE_UE, /* for UET only NICs */
 };
 
 enum ibv_transport_type {
@@ -110,6 +112,36 @@ enum ibv_transport_type {
 	IBV_TRANSPORT_USNIC,
 	IBV_TRANSPORT_USNIC_UDP,
 	IBV_TRANSPORT_UNSPECIFIED,
+	IBV_TRANSPORT_UE, /* for UET only ports */
+};
+
+/* Protocol stack:
+ *
+ * Used by ibv_port_attr::proto_mask.
+ */
+enum {
+	/* IB transport over IB link */
+	IBV_PROTO_IB = (1 << 0),
+	/* iWarp transport over TCP/IP */
+	IBV_PROTO_IWARP = (1 << 1),
+	/* IB transport over Ethernet link */
+	IBV_PROTO_ROCE = (1 << 2),
+	/* IB transport over well-known UDP/IP */
+	IBV_PROTO_ROCE_V2 = (1 << 3),
+	/* UET transport over well-known UDP/IP */
+	IBV_PROTO_UET_UDP = (1 << 4),
+	/* UET transport over IP */
+	IBV_PROTO_UET_IP = (1 << 5),
+
+	/* Reserved bits for vendor specific and experimental protocols */
+	IBV_PROTO_VENDOR_MASK = (1 << 24) |
+				(1 << 25) |
+				(1 << 26) |
+				(1 << 27) |
+				(1 << 28) |
+				(1 << 29) |
+				(1 << 30) |
+				(1 << 31)
 };
 
 enum ibv_device_cap_flags {
@@ -448,6 +480,9 @@ struct ibv_port_attr {
 	uint8_t			flags;
 	uint16_t		port_cap_flags2;
 	uint32_t		active_speed_ex;
+
+	/* List of protocol stacks enabled on this port */
+	unsigned int		proto_mask;
 };
 
 enum ibv_event_type {
