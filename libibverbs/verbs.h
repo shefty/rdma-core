@@ -965,6 +965,7 @@ enum ibv_qp_type {
 	IBV_QPT_RAW_PACKET = 8,
 	IBV_QPT_XRC_SEND = 9,
 	IBV_QPT_XRC_RECV,
+	IBV_QPT_RU,
 	IBV_QPT_DRIVER = 0xff,
 };
 
@@ -994,6 +995,11 @@ enum ibv_qp_init_attr_mask {
 	IBV_QP_INIT_ATTR_IND_TABLE	= 1 << 4,
 	IBV_QP_INIT_ATTR_RX_HASH	= 1 << 5,
 	IBV_QP_INIT_ATTR_SEND_OPS_FLAGS = 1 << 6,
+	/* Allow specifying additional attributes during QP creation.
+	 * QP states for different transports may not align with
+	 * RDMA QP states.
+	 */
+	IBV_QP_INIT_ATTR_QP_ATTR	= 1 << 7,
 };
 
 enum ibv_qp_create_flags {
@@ -1048,6 +1054,9 @@ struct ibv_qp_init_attr_ex {
 	uint32_t		source_qpn;
 	/* See enum ibv_qp_create_send_ops_flags */
 	uint64_t send_ops_flags;
+
+	struct ibv_qp_attr	*qp_attr;
+	int			qp_attr_mask;
 };
 
 enum ibv_qp_open_attr_mask {
@@ -1096,6 +1105,10 @@ enum ibv_qp_attr_mask {
 	_IBV_QP_ALT_VID 		= 1 << 24,
 	*/
 	IBV_QP_RATE_LIMIT		= 1 << 25,
+	/* To conserve bits, this flag indicates that both addr_info and
+	 * alt_addr_info fields are valid.
+	 */
+	IBV_QP_ADDR_INFO		= 1 << 26,
 };
 
 enum ibv_query_qp_data_in_order_flags {
@@ -1112,6 +1125,8 @@ enum ibv_qp_state {
 	IBV_QPS_INIT,
 	IBV_QPS_RTR,
 	IBV_QPS_RTS,
+	/* Propose UET QPs have 3 visible states: INIT, READY, ERROR. */
+	IBV_QPS_RDY = IBV_QPS_RTS,
 	IBV_QPS_SQD,
 	IBV_QPS_SQE,
 	IBV_QPS_ERR,
@@ -1122,6 +1137,27 @@ enum ibv_mig_state {
 	IBV_MIG_MIGRATED,
 	IBV_MIG_REARM,
 	IBV_MIG_ARMED
+};
+
+enum ibv_addr_type {
+	IBV_ADDR_NONE,
+	IBV_ADDR_AH_ATTR, /* compatibility */
+	IBV_ADDR_UET,
+};
+
+/* Support more flexible/extendable addressing data
+ *
+ * For compatibility with the librdamcm, the structure size must
+ * be <= sizeof(struct ibv_ah_attr), which is 32-bytes with padding.
+ */
+struct ibv_addr_info {
+	unsigned int protocol;
+	enum ibv_addr_type addr_type;
+	union {
+		struct ibv_ah_attr *ah_attr;
+		struct uet_addr *uet;
+	} addr;
+	unsigned int addr_size;
 };
 
 struct ibv_qp_attr {
@@ -1135,8 +1171,14 @@ struct ibv_qp_attr {
 	uint32_t		dest_qp_num;
 	unsigned int		qp_access_flags;
 	struct ibv_qp_cap	cap;
-	struct ibv_ah_attr	ah_attr;
-	struct ibv_ah_attr	alt_ah_attr;
+	union {
+		struct ibv_ah_attr ah_attr;
+		struct ibv_addr_info addr;
+	};
+	union {
+		struct ibv_ah_attr alt_ah_attr;
+		struct ibv_addr_info alt_addr;
+	};
 	uint16_t		pkey_index;
 	uint16_t		alt_pkey_index;
 	uint8_t			en_sqd_async_notify;
