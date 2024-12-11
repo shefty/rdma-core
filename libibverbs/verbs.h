@@ -626,6 +626,9 @@ enum ibv_wc_flags {
 	IBV_WC_TM_SYNC_REQ	= 1 << 4,
 	IBV_WC_TM_MATCH		= 1 << 5,
 	IBV_WC_TM_DATA_VALID	= 1 << 6,
+	IBV_WC_WITH_IMM64	= 1 << 7,
+	IBV_WC_PEER_ID		= 1 << 8,
+	IBV_WC_TRANSPORT	= 1 << 9,
 };
 
 struct ibv_wc {
@@ -634,20 +637,43 @@ struct ibv_wc {
 	enum ibv_wc_opcode	opcode;
 	uint32_t		vendor_err;
 	uint32_t		byte_len;
-	/* When (wc_flags & IBV_WC_WITH_IMM): Immediate data in network byte order.
-	 * When (wc_flags & IBV_WC_WITH_INV): Stores the invalidated rkey.
-	 */
+
 	union {
-		__be32		imm_data;
-		uint32_t	invalidated_rkey;
+		/* RDMA verbs */
+		struct {
+			/* When (wc_flags & IBV_WC_WITH_IMM): Immediate data in network b>
+			* When (wc_flags & IBV_WC_WITH_INV): Stores the invalidated rkey.
+			*/
+			union {
+				__be32   imm_data;
+				uint32_t invalidated_rkey;
+			};
+			uint32_t qp_num;
+		};
+		/* wc_flags & IBV_WC_WITH_IMM64 */
+		__be64 imm64_data;
 	};
-	uint32_t		qp_num;
-	uint32_t		src_qp;
+	union {
+		uint32_t src_qp;
+		/* wc_flags & IBV_WC_PEER_ID */
+		uint32_t peer_id; /* UET initiator ID (rank) */
+	};
+
 	unsigned int		wc_flags;
-	uint16_t		pkey_index;
-	uint16_t		slid;
-	uint8_t			sl;
-	uint8_t			dlid_path_bits;
+
+	union {
+		struct {
+			uint16_t pkey_index;
+			uint16_t slid;
+			uint8_t  sl;
+			uint8_t  dlid_path_bits;
+		};
+		/* wc_flags & IBV_WC_TRANSPORT */
+		struct {
+			uint32_t job_id; /* UET job id - note limit to 32-bits */
+			uint16_t reserved; /* wq index? */
+		} transport;
+	};
 };
 
 enum ibv_access_flags {
