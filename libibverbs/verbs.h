@@ -3587,6 +3587,10 @@ static inline int ibv_post_recv(struct ibv_qp *qp, struct ibv_recv_wr *wr,
  */
 struct ibv_ah *ibv_create_ah(struct ibv_pd *pd, struct ibv_ah_attr *attr);
 
+struct ibv_ah *
+ibv_create_ah_ex(struct ibv_pd *pd, struct ibv_job_key *jkey,
+		 struct ibv_addr_info *addr, unsigned int flags);
+
 /**
  * ibv_init_ah_from_wc - Initializes address handle attributes from a
  *   work completion.
