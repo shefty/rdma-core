@@ -1270,6 +1270,7 @@ struct ibv_send_wr {
 	 * When opcode is *_INV: Stores the rkey to invalidate
 	 */
 	union {
+		/* imm_data applies to transports limited to 32-bit data */
 		__be32			imm_data;
 		uint32_t		invalidate_rkey;
 	};
@@ -1278,6 +1279,21 @@ struct ibv_send_wr {
 			uint64_t	remote_addr;
 			uint32_t	rkey;
 		} rdma;
+		/* Transports which carry 64-bit rkeys or immediate data
+		 * use rdma_ex for READ, WRITE, and WRITE_IMM.  App must
+		 * select rdma vs rdma_ex correctly.
+		 */
+		struct {
+			uint64_t	remote_addr;
+			uint64_t	rkey;
+			__be64		imm_data;
+		} rdma_ex;
+		/* Transports which carry 64-bit immediate data use
+		 * send for SEND_IMM.
+		 */
+		struct {
+			__be64		imm_data;
+		} send;
 		struct {
 			uint64_t	remote_addr;
 			uint64_t	compare_add;
@@ -1307,6 +1323,13 @@ struct ibv_send_wr {
 			uint16_t		mss;
 		} tso;
 	};
+	/* For unconnected QPs */
+	struct ibv_ah *ah; /* UET address handle option */
+	struct {
+		uint32_t jkey; /* via struct ibv_job_key */
+		unsigned int addr_idx;
+		uint16_t wq_index; /* resource index placeholder */
+	} peer;
 };
 
 struct ibv_recv_wr {
