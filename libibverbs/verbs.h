@@ -1248,6 +1248,8 @@ enum ibv_wr_opcode {
 	IBV_WR_DRIVER1,
 	IBV_WR_FLUSH = 14,
 	IBV_WR_ATOMIC_WRITE = 15,
+	IBV_WR_ATTACH_MR,
+	IBV_WR_DETACH_MR,
 };
 
 const char *ibv_wr_opcode_str(enum ibv_wr_opcode opcode);
@@ -2419,8 +2421,35 @@ struct ibv_values_ex {
 	struct timespec raw_clock;
 };
 
+enum ibv_mr_attr_flags {
+	IBV_MR_FLAGS_REQ_RKEY = 1 << 0,
+	IBV_MR_FLAGS_FD = 1 << 1,
+	IBV_MR_FLAGS_RKEY32 = 1 << 2,
+};
+
+struct ibv_mr_attr {
+	uint64_t flags;
+
+	union {
+		void *addr;
+		int fd;
+	};
+
+	size_t length;
+	uint64_t offset;
+	uint64_t iova;
+	int access;
+
+	uint64_t rkey;
+	struct ibv_job_key *jkey;
+
+	struct ibv_mr *cur_mr;
+	uint32_t derive_cnt;
+};
+
 struct verbs_context {
 	/*  "grows up" - new fields go here */
+	struct ibv_mr *(*reg_mr_attr)(struct ibv_pd *pd, struct ibv_mr_attr *attr);
 	struct ibv_mr *(*reg_mr_ex)(struct ibv_pd *pd, struct ibv_reg_mr_in *in);
 	int (*dealloc_dmah)(struct ibv_dmah *dmah);
 	struct ibv_dmah *(*alloc_dmah)(struct ibv_context *context,
@@ -2942,6 +2971,11 @@ int ibv_rereg_mr(struct ibv_mr *mr, int flags,
  * ibv_dereg_mr - Deregister a memory region
  */
 int ibv_dereg_mr(struct ibv_mr *mr);
+
+/**
+ * ibv_reg_mr_attr - Extensible memory registration
+ */
+struct ibv_mr *ibv_reg_mr_attr(struct ibv_pd *pd, struct ibv_mr_attr *attr);
 
 /**
  * ibv_alloc_mw - Allocate a memory window
