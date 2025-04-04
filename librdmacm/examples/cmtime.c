@@ -121,6 +121,7 @@ struct conn {
 
 static struct work_queue wq;
 
+static uint32_t num_peers = 2;
 static struct conn *conns;
 static int conn_index;
 static uint64_t times[STEP_CNT][2];
@@ -874,11 +875,13 @@ static void run_client(void)
 	client_connect();
 	show_perf();
 
-	printf("Connect (%d) test - no QPs\n", num_conns);
-	atomic_store(&cur_qpn, base_qpn);
-	mimic_qp_delay = 0;
-	client_connect();
-	show_perf();
+	if (num_peers == 2) {
+		printf("Connect (%d) test - no QPs\n", num_conns);
+		atomic_store(&cur_qpn, base_qpn);
+		mimic_qp_delay = 0;
+		client_connect();
+		show_perf();
+	}
 
 	close(oob_up);
 }
@@ -892,7 +895,7 @@ static void run_server(void)
 	/* Make sure we're ready for RDMA prior to any OOB sync */
 	server_listen(&listen_id);
 
-	ret = oob_root_setup(src_addr, port, &oob_root, 1);
+	ret = oob_root_setup(src_addr, port, &oob_root, num_peers - 1);
 	if (ret)
 		exit(EXIT_FAILURE);
 
@@ -912,11 +915,13 @@ static void run_server(void)
 	server_connect();
 	show_perf();
 
-	printf("Accept (%d) test - no QPs\n", num_conns);
-	atomic_store(&cur_qpn, base_qpn);
-	mimic_qp_delay = 0;
-	server_connect();
-	show_perf();
+	if (num_peers == 2) {
+		printf("Accept (%d) test - no QPs\n", num_conns);
+		atomic_store(&cur_qpn, base_qpn);
+		mimic_qp_delay = 0;
+		server_connect();
+		show_perf();
+	}
 
 	oob_close_root(&oob_root);
 	rdma_destroy_id(listen_id);
@@ -930,7 +935,7 @@ int main(int argc, char **argv)
 
 	hints.ai_port_space = RDMA_PS_TCP;
 	hints.ai_qp_type = IBV_QPT_RC;
-	while ((op = getopt(argc, argv, "b:c:m:n:p:q:r:Ss:t:")) != -1) {
+	while ((op = getopt(argc, argv, "b:c:m:n:P:p:q:r:Ss:t:")) != -1) {
 		switch (op) {
 		case 'b':
 			src_addr = optarg;
@@ -944,6 +949,11 @@ int main(int argc, char **argv)
 			break;
 		case 'n':
 			num_threads = (uint32_t) atoi(optarg);
+			break;
+		case 'P':
+			num_peers = (uint32_t) atoi(optarg);
+			if (num_peers < 2)
+				goto usage;
 			break;
 		case 'p':
 			port = optarg;
@@ -965,11 +975,13 @@ int main(int argc, char **argv)
 			timeout = atoi(optarg);
 			break;
 		default:
+usage:
 			printf("usage: %s\n", argv[0]);
 			printf("\t[-b bind_address]\n");
-			printf("\t[-c num_connections]\n");
+			printf("\t[-c num_conns] connections per peer\n");
 			printf("\t[-m mimic_qp_delay_us]\n");
 			printf("\t[-n num_threads]\n");
+			printf("\t[-P num_peers] total number of peers\n");
 			printf("\t[-p port_number]\n");
 			printf("\t[-q base_qpn]\n");
 			printf("\t[-r retries]\n");
@@ -980,8 +992,11 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!is_client())
+	if (!is_client()) {
 		hints.ai_flags |= RAI_PASSIVE;
+		num_conns = num_conns * (num_peers - 1);
+	}
+
 	ret = get_rdma_addr(src_addr, dst_addr, port, &hints, &rai);
 	if (ret) {
 		perror("get_rdma_addr");
