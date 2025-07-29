@@ -168,6 +168,10 @@ enum ibv_proto_order {
 	IBV_ORDER_WAW = (1 << 16),
 };
 
+enum ibv_imm_data_cap_flags {
+	IBV_IMM_DATA_CAP_RQ = (1 << 0),
+};
+
 struct ibv_proto_cap {
 	uint32_t comp_mask;
 	uint32_t proto_order;
@@ -175,6 +179,8 @@ struct ibv_proto_cap {
 	uint32_t max_rdma_war_size;
 	uint32_t max_rdma_waw_size;
 	uint32_t max_pdu;
+	uint8_t imm_data_size;
+	unsigned int imm_caps;
 };
 
 enum ibv_device_cap_flags {
