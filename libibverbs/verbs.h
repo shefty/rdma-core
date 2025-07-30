@@ -144,6 +144,39 @@ enum {
 				(1 << 31)
 };
 
+enum ibv_proto_order {
+	/* Atomic-Atomic Rd/Wr ordering */
+	IBV_ORDER_ATOMIC_RAR = (1 << 0),
+	IBV_ORDER_ATOMIC_RAW = (1 << 1),
+	IBV_ORDER_ATOMIC_WAR = (1 << 2),
+	IBV_ORDER_ATOMIC_WAW = (1 << 3),
+	/* RDMA-RDMA Rd/Wr ordering */
+	IBV_ORDER_RDMA_RAR = (1 << 4),
+	IBV_ORDER_RDMA_RAW = (1 << 5),
+	IBV_ORDER_RDMA_WAR = (1 << 6),
+	IBV_ORDER_RDMA_WAW = (1 << 7),
+	/* Send ordering wrt Atomic and RDMA Rd/Wr */
+	IBV_ORDER_RAS = (1 << 8),
+	IBV_ORDER_SAR = (1 << 9),
+	IBV_ORDER_SAS = (1 << 10),
+	IBV_ORDER_SAW = (1 << 11),
+	IBV_ORDER_WAS = (1 << 12),
+	/* Atomic and RDMA Rd/Wr ordering */
+	IBV_ORDER_RAR = (1 << 13),
+	IBV_ORDER_RAW = (1 << 14),
+	IBV_ORDER_WAR = (1 << 15),
+	IBV_ORDER_WAW = (1 << 16),
+};
+
+struct ibv_proto_cap {
+	uint32_t comp_mask;
+	uint32_t proto_order;
+	uint32_t max_rdma_raw_size;
+	uint32_t max_rdma_war_size;
+	uint32_t max_rdma_waw_size;
+	uint32_t max_pdu;
+};
+
 enum ibv_device_cap_flags {
 	IBV_DEVICE_RESIZE_MAX_WR	= 1,
 	IBV_DEVICE_BAD_PKEY_CNTR	= 1 <<  1,
@@ -1031,6 +1064,7 @@ enum ibv_qp_init_attr_mask {
 	 * RDMA QP states.
 	 */
 	IBV_QP_INIT_ATTR_QP_ATTR	= 1 << 7,
+	IBV_QP_INIT_ATTR_PROTO_CAP	= 1 << 8,
 };
 
 enum ibv_qp_create_flags {
@@ -1088,6 +1122,7 @@ struct ibv_qp_init_attr_ex {
 
 	struct ibv_qp_attr	*qp_attr;
 	int			qp_attr_mask;
+	struct ibv_proto_cap	*proto_cap;
 };
 
 enum ibv_qp_open_attr_mask {
@@ -2449,6 +2484,8 @@ struct ibv_mr_attr {
 
 struct verbs_context {
 	/*  "grows up" - new fields go here */
+	int (*query_protocol)(struct ibv_context *context, unsigned int protocol,
+			      struct ibv_proto_cap *proto_cap, size_t proto_cap_len);
 	struct ibv_mr *(*reg_mr_attr)(struct ibv_pd *pd, struct ibv_mr_attr *attr);
 	struct ibv_mr *(*reg_mr_ex)(struct ibv_pd *pd, struct ibv_reg_mr_in *in);
 	int (*dealloc_dmah)(struct ibv_dmah *dmah);
