@@ -172,6 +172,11 @@ enum ibv_imm_data_cap_flags {
 	IBV_IMM_DATA_CAP_RQ = (1 << 0),
 };
 
+enum ibv_mr_cap_flags {
+	IBV_MR_QP_ATTACH = 1 << 0,
+	IBV_MR_USER_RKEY = 1 << 1,
+};
+
 struct ibv_proto_cap {
 	uint32_t comp_mask;
 	uint32_t proto_order;
@@ -180,7 +185,9 @@ struct ibv_proto_cap {
 	uint32_t max_rdma_waw_size;
 	uint32_t max_pdu;
 	uint8_t imm_data_size;
+	uint8_t rkey_size;
 	unsigned int imm_caps;
+	unsigned int mr_caps;
 };
 
 enum ibv_device_cap_flags {
